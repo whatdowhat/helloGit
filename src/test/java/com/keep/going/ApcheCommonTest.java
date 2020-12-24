@@ -37,6 +37,7 @@ public class ApcheCommonTest {
 		CustomUser customUser = CustomUser.builder().id(123).name("스트링").build();
 		System.out.println(customUser);
 		
+		//simple edit
 	}
 	
 	@Ignore @Test
