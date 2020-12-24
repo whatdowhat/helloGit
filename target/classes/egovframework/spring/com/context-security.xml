@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-4.2.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd"
+        >
+
+	<bean id="bcryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder" />	
+	<!-- <bean name="requestDataValueProcessor" class="egovframework.com.cmm.filter.CSRFRequestDataValueProcessor"/> -->
+	<bean name="cSRFTokenManager" class="egovframework.com.cmm.filter.CustomCSRFToken"/>
+
+	<bean id="custFilterSecurityInterceptor" class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor">
+		<property name="authenticationManager" ref="org.springframework.security.authenticationManager" />
+		<property name="accessDecisionManager" ref="accessDecisionManager" />
+		<property name="securityMetadataSource" ref="reloadableFilterInvocationSecurityMetadataSource" />
+	</bean>
+
+
+ 	<bean id="customJdbcDaoImpl" class="egovframework.com.cmm.security.CustomJdbcDaoImpl">
+
+		<property name="dataSource" ref="dataSource" />
+		<property name="rolePrefix" value="" />
+		<property name="usersByUsernameQuery" value="SELECT `ID`, `PASSWORD`, `NAME` FROM MEMBERINFO WHERE `ID`=?" />
+		<property name="authoritiesByUsernameQuery" value="SELECT `AUTHORITY` FROM MEMBER_AUTHORITY WHERE `ID`=?" />
+		<property name="enableGroups" value="false" />
+	</bean>
+	
+	<bean id="customAuthenticationSuccessHandler" class="egovframework.com.cmm.security.CustomAuthenticationSuccessHandler">
+		<property name="targetUrlParameter" value="loginRedirect" />
+		<property name="useReferer" value="false" />
+		<property name="defaultUrl" value="/uat/uia/actionSecurityLogin.do" />
+	</bean>
+ 	<bean id="customAuthenticationFailureHandler" class="egovframework.com.cmm.security.CustomAuthenticationFailureHandler">
+ 		<property name="defaultFailureUrl" value="/uat/uia/actionMain.do?login_error=2"/>
+	</bean>
+	<security:authentication-manager erase-credentials="false">
+		
+		<security:authentication-provider user-service-ref="customJdbcDaoImpl">
+			<security:password-encoder ref="bcryptPasswordEncoder" />
+		</security:authentication-provider>
+	</security:authentication-manager>
+ 
+ 
+    <security:http pattern="/css/**" security="none"/>
+	<security:http pattern="/html/**" security="none"/>
+    <security:http pattern="/images/**" security="none"/>
+ 	<security:http pattern="/js/**" security="none"/>
+ 	<security:http pattern="/resource/**" security="none"/>
+ 	<security:http pattern="\A/WEB-INF/jsp/.*\Z" request-matcher="regex" security="none"/>
+
+ 	<security:http pattern="/index.jsp" security="none"/> <!-- 퍼블 예시 페이지 -->
+ 
+ 	
+ 
+ 	<security:http auto-config='false' use-expressions="true">
+ 	<security:session-management invalid-session-url="/uat/uia/actionMain"> <!-- 세션 만료됬을때 페이지 -->
+ 		<security:concurrency-control max-sessions="1" expired-url="/uat/uia/actionMain" error-if-maximum-exceeded="true" />
+ 	</security:session-management>
+ 	
+ 	<security:csrf disabled="false"/>    	
+    	
+		<security:form-login username-parameter="id" password-parameter="password"
+			login-page="/uat/uia/actionMain"
+			login-processing-url="/uat/uia/actionSecurityLogin.do"			
+			default-target-url="/uat/uia/actionMain.do"
+			authentication-failure-url ="/whatthe"
+			authentication-success-handler-ref="customAuthenticationSuccessHandler"
+			authentication-failure-handler-ref="customAuthenticationFailureHandler" />
+		<security:anonymous granted-authority="ANONYMOUS" />
+		<!-- <security:anonymous granted-authority="ADMIN" /> -->
+		<security:logout logout-success-url="/uat/uia/actionMain.do" delete-cookies="JSESSIONID" />
+    
+    	<security:custom-filter before="FILTER_SECURITY_INTERCEPTOR" ref="custFilterSecurityInterceptor" />
+    	<security:access-denied-handler ref="accessDenied"/>
+    	
+	</security:http>
+
+
+
+	<bean id="accessDenied" class="egovframework.com.cmm.security.CustomAccessDeniedHandler">
+		<property name="errorPage" value="/common/error" />
+	</bean>
+
+<!--  <security:authentication-manager>
+    <security:authentication-provider>
+      <security:user-service>
+        <security:user name="jimi" password="jimispassword" authorities="ROLE_USER, ROLE_ADMIN" />
+        <security:user name="bob" password="bobspassword" authorities="ROLE_USER" />
+      </security:user-service>
+    </security:authentication-provider>
+  </security:authentication-manager> -->
+
+
+	<!-- <bean id="accessDecisionManager"
+		class="org.springframework.security.access.vote.AffirmativeBased"> -->
+	
+	<bean id="accessDecisionManager"
+		class="org.springframework.security.access.vote.UnanimousBased">	
+		<constructor-arg>
+			<list>
+				<bean class="org.springframework.security.access.vote.RoleVoter">
+					<property name="rolePrefix" value="" />
+				</bean>
+				<bean class="org.springframework.security.access.vote.AuthenticatedVoter" />
+			</list>
+		</constructor-arg>
+		<property name="allowIfAllAbstainDecisions"
+			value="false" />
+	</bean>
+
+	<bean id="reloadableFilterInvocationSecurityMetadataSource"
+		class="egovframework.com.cmm.security.ReloadableFilterInvocationSecurityMetadataSource" >
+		<constructor-arg ref="requestMap" />
+		<property name="securedObjectService" ref="securedObjectService" />
+	</bean>
+
+	<bean id="securedObjectService"
+		class="egovframework.com.cmm.security.SecuredObjectServiceImpl">
+		<property name="secureObjectDao" ref="securedObjectDao" />
+	</bean>
+
+	<bean id="securedObjectDao"
+		class="egovframework.com.cmm.security.SecuredObjectDao">
+		<property name="dataSource" ref="dataSource" />
+		<property name="sqlRolesAndUrl"
+			value="
+		SELECT A.RESOURCE_PATTERN AS URL, B.AUTHORITY AS AUTHORITY 
+		FROM SECURED_RESOURCES A, SECURED_RESOURCES_ROLE B 
+		WHERE A.RESOURCE_ID = B.RESOURCE_ID 
+		AND A.RESOURCE_TYPE = 'url' 
+		ORDER BY A.SORT_ORDER" />
+	</bean>
+
+	<bean id="requestMap"
+		class="egovframework.com.cmm.security.UrlResourcesMapFactoryBean"
+		init-method="init">
+		<property name="securedObjectService" ref="securedObjectService" />
+	</bean>
+
+
+
+</beans>
+
