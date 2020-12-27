@@ -112,9 +112,10 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
     <http pattern="/images/**" security="none"/>
  	<http pattern="/js/**" security="none"/>
  	<http pattern="/resource/**" security="none"/>
- 	<http pattern="\A/WEB-INF/jsp/.*\Z" request-matcher="regex" security="none"/>
+ 	<!-- <http pattern="\A/WEB-INF/jsp/.*\Z" request-matcher="regex" security="none"/> -->
 
- 	<http pattern="/index.jsp" security="none"/> <!-- 퍼블 예시 페이지 -->
+	<http pattern="/" security="none"/> <!-- 퍼블 예시 페이지 -->
+ 	<http pattern="/index.html" security="none"/> <!-- 퍼블 예시 페이지 -->
  
  	
  
